@@ -337,50 +337,40 @@ def build_slack_message(all_stats):
     Updates | Comments | Public comments | Internal comments |
     Tickets updated w/comment | Tickets solved | Tickets created
     """
-    W_NUM  = 3
-    W_NAME = 22
-    W_CAT  = 16
-    W_COL  = 6
+    W_NUM  = 2
+    W_NAME = 20
+    W_CAT  = 15
+    W_COL  = 5   # digit columns: max 99999 — well above any real value
 
-    def num_row(num, name, cat, upd, cmts, pub, int_, twc, slvd, crtd, flag=""):
-        return (
-            f"{str(num):<{W_NUM}} "
-            f"{name:<{W_NAME}} "
-            f"{cat:<{W_CAT}} "
-            f"{str(upd):>{W_COL}}"
-            f"{str(cmts):>{W_COL}}"
-            f"{str(pub):>{W_COL}}"
-            f"{str(int_):>{W_COL}}"
-            f"{str(twc):>{W_COL}}"
-            f"{str(slvd):>{W_COL}}"
-            f"{str(crtd):>{W_COL}}"
-            + flag
-        )
+    # Left gutter: "#  Name                 Category        "
+    W_LEFT = W_NUM + 1 + W_NAME + 1 + W_CAT + 1   # 40 chars
 
-    header = (
-        f"{'#':<{W_NUM}} "
-        f"{'Agent Name':<{W_NAME}} "
-        f"{'Category':<{W_CAT}} "
-        f"{'Upd':>{W_COL}}"
-        f"{'Cmts':>{W_COL}}"
-        f"{'Pub':>{W_COL}}"
-        f"{'Int':>{W_COL}}"
-        f"{'T.Upd':>{W_COL}}"
-        f"{'Slvd':>{W_COL}}"
-        f"{'Crtd':>{W_COL}}"
-    )
+    def data_cells(upd, cmts, pub, int_, twc, slvd, crtd):
+        vals = [upd, cmts, pub, int_, twc, slvd, crtd]
+        return "".join(f"| {str(v):>{W_COL}} " for v in vals) + "|"
 
-    total_width = W_NUM + 1 + W_NAME + 1 + W_CAT + 1 + W_COL * 7
-    divider = "─" * total_width
-    thin    = "·" * total_width
+    def data_header():
+        cols = ["Upd", "Cmts", "Pub", "Int", "T.Upd", "Slvd", "Crtd"]
+        return "".join(f"| {c:>{W_COL}} " for c in cols) + "|"
+
+    def fmt_row(num, name, cat, upd, cmts, pub, int_, twc, slvd, crtd, flag=""):
+        left = f"{str(num) if num != '' else '':<{W_NUM}} {name:<{W_NAME}} {cat:<{W_CAT}} "
+        return left + data_cells(upd, cmts, pub, int_, twc, slvd, crtd) + flag
+
+    header      = f"{'#':<{W_NUM}} {'Agent Name':<{W_NAME}} {'Category':<{W_CAT}} " + data_header()
+    total_width = len(header)
+    sep_heavy   = "═" * total_width
+    sep_light   = "─" * total_width
+    sep_dot     = "·" * total_width
 
     lines = [
         "📊 *cars24 — Daily Agent Report*",
         f"📅 *{REPORT_DATE}*   _|   Sent: {SENT_DATE}_",
         f"👥 *Total Agents: {len(all_stats)}*",
         "```",
+        sep_heavy,
         header,
-        divider,
+        sep_heavy,
     ]
 
     current_band = None
@@ -391,19 +381,19 @@ def build_slack_message(all_stats):
         if s["band"] != current_band:
             if current_band and current_band in band_totals:
                 bt = band_totals[current_band]
-                lines.append(thin)
-                lines.append(num_row(
-                    "", f"SUBTOTAL {current_band}", "",
+                lines.append(sep_dot)
+                lines.append(fmt_row(
+                    "", f"  Subtotal {current_band}", "",
                     bt["u"], bt["c"], bt["p"], bt["i"],
                     bt["t"], bt["s"], bt["cr"]
                 ))
+                lines.append(sep_light)
                 lines.append("")
 
             current_band = s["band"]
-            lines.append(
-                f"  ── Band: {current_band} "
-                + "─" * max(0, total_width - 12 - len(current_band))
-            )
+            band_label   = f"  Band {current_band}"
+            pad          = total_width - len(band_label) - 2
+            lines.append(f"{band_label} {'─' * pad}")
             band_totals[current_band] = {
                 "u": 0, "c": 0, "p": 0, "i": 0,
                 "t": 0, "s": 0, "cr": 0,
@@ -411,9 +401,9 @@ def build_slack_message(all_stats):
 
         row_num += 1
         flag = "  ⚠" if not s["active"] else ""
-        lines.append(num_row(
+        lines.append(fmt_row(
             row_num,
-            s["name"], s["category"],
+            s["name"][:W_NAME], s["category"][:W_CAT],
             s["updates"], s["comments"],
             s["public_comments"], s["internal_comments"],
             s["tickets_w_comment"], s["tickets_solved"],
@@ -431,17 +421,19 @@ def build_slack_message(all_stats):
 
     if current_band and current_band in band_totals:
         bt = band_totals[current_band]
-        lines.append(thin)
-        lines.append(num_row(
-            "", f"SUBTOTAL {current_band}", "",
+        lines.append(sep_dot)
+        lines.append(fmt_row(
+            "", f"  Subtotal {current_band}", "",
             bt["u"], bt["c"], bt["p"], bt["i"],
             bt["t"], bt["s"], bt["cr"]
         ))
+        lines.append(sep_light)
 
     lines.extend([
-        divider,
-        num_row(
-            "", "GRAND TOTAL", "",
+        "",
+        sep_heavy,
+        fmt_row(
+            "", "  GRAND TOTAL", "",
             sum(s["updates"]           for s in all_stats),
             sum(s["comments"]          for s in all_stats),
             sum(s["public_comments"]   for s in all_stats),
@@ -450,9 +442,10 @@ def build_slack_message(all_stats):
             sum(s["tickets_solved"]    for s in all_stats),
             sum(s["tickets_created"]   for s in all_stats),
         ),
+        sep_heavy,
         "```",
-        "_Upd=Updates | Cmts=Comments | Pub=Public comments | Int=Internal comments | T.Upd=Tickets w/comment | Slvd=Solved | Crtd=Created_",
-        "_⚠ = Agent no longer active in Zendesk_",
+        "_Upd=Updates · Cmts=Comments · Pub=Public · Int=Internal · T.Upd=Tickets w/comment · Slvd=Solved · Crtd=Created_",
+        "_⚠ = Agent inactive in Zendesk_",
     ])
 
     return "\n".join(lines)
