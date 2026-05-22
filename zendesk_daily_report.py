@@ -130,7 +130,8 @@ def fetch_audit_counts_from_events(agent_id_set):
             if not (WINDOW_START <= created < WINDOW_END):
                 continue
 
-            author_id = te.get("author_id")
+            # ticket_events endpoint uses "updater_id", not "author_id"
+            author_id = te.get("updater_id")
             if author_id not in counts:
                 continue
 
@@ -138,12 +139,12 @@ def fetch_audit_counts_from_events(agent_id_set):
             tid = te["ticket_id"]
             counts[author_id]["updates"] += 1
 
-            # Zendesk uses "child_events" on this endpoint (vs "events" on audits)
-            child_events = te.get("child_events") or te.get("events", [])
-            for event in child_events:
-                if event.get("type") == "Comment":
+            # Comments in ticket_events are child events with "comment_present" key
+            # (not "type": "Comment" as in the audits endpoint)
+            for event in te.get("child_events", []):
+                if "comment_present" in event:
                     counts[author_id]["comments"] += 1
-                    if event.get("public", False):
+                    if event.get("comment_public", False):
                         counts[author_id]["public_comments"] += 1
                     else:
                         counts[author_id]["internal_comments"] += 1
