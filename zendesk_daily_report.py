@@ -340,24 +340,36 @@ def build_slack_message(all_stats):
     W_NUM  = 2
     W_NAME = 20
     W_CAT  = 15
-    W_COL  = 5   # digit columns: max 99999 — well above any real value
-
-    # Left gutter: "#  Name                 Category        "
-    W_LEFT = W_NUM + 1 + W_NAME + 1 + W_CAT + 1   # 40 chars
-
-    def data_cells(upd, cmts, pub, int_, twc, slvd, crtd):
-        vals = [upd, cmts, pub, int_, twc, slvd, crtd]
-        return "".join(f"| {str(v):>{W_COL}} " for v in vals) + "|"
-
-    def data_header():
-        cols = ["Upd", "Cmts", "Pub", "Int", "T.Upd", "Slvd", "Crtd"]
-        return "".join(f"| {c:>{W_COL}} " for c in cols) + "|"
+    W_COL  = 6   # right-aligned numeric columns
 
     def fmt_row(num, name, cat, upd, cmts, pub, int_, twc, slvd, crtd, flag=""):
-        left = f"{str(num) if num != '' else '':<{W_NUM}} {name:<{W_NAME}} {cat:<{W_CAT}} "
-        return left + data_cells(upd, cmts, pub, int_, twc, slvd, crtd) + flag
+        return (
+            f"{str(num) if num != '' else '':<{W_NUM}} "
+            f"{name:<{W_NAME}} "
+            f"{cat:<{W_CAT}} "
+            f"{str(upd):>{W_COL}}"
+            f"{str(cmts):>{W_COL}}"
+            f"{str(pub):>{W_COL}}"
+            f"{str(int_):>{W_COL}}"
+            f"{str(twc):>{W_COL}}"
+            f"{str(slvd):>{W_COL}}"
+            f"{str(crtd):>{W_COL}}"
+            + flag
+        )
 
-    header      = f"{'#':<{W_NUM}} {'Agent Name':<{W_NAME}} {'Category':<{W_CAT}} " + data_header()
+    header = (
+        f"{'#':<{W_NUM}} "
+        f"{'Agent Name':<{W_NAME}} "
+        f"{'Category':<{W_CAT}} "
+        f"{'Upd':>{W_COL}}"
+        f"{'Cmts':>{W_COL}}"
+        f"{'Pub':>{W_COL}}"
+        f"{'Int':>{W_COL}}"
+        f"{'T.Upd':>{W_COL}}"
+        f"{'Slvd':>{W_COL}}"
+        f"{'Crtd':>{W_COL}}"
+    )
+
     total_width = len(header)
     sep_heavy   = "═" * total_width
     sep_light   = "─" * total_width
@@ -383,7 +395,7 @@ def build_slack_message(all_stats):
                 bt = band_totals[current_band]
                 lines.append(sep_dot)
                 lines.append(fmt_row(
-                    "", f"  Subtotal {current_band}", "",
+                    "", f"  SUBTOTAL {current_band}", "",
                     bt["u"], bt["c"], bt["p"], bt["i"],
                     bt["t"], bt["s"], bt["cr"]
                 ))
@@ -391,9 +403,9 @@ def build_slack_message(all_stats):
                 lines.append("")
 
             current_band = s["band"]
-            band_label   = f"  Band {current_band}"
-            pad          = total_width - len(band_label) - 2
-            lines.append(f"{band_label} {'─' * pad}")
+            band_label   = f"  ── Band: {current_band} "
+            pad          = total_width - len(band_label)
+            lines.append(f"{band_label}{'─' * pad}")
             band_totals[current_band] = {
                 "u": 0, "c": 0, "p": 0, "i": 0,
                 "t": 0, "s": 0, "cr": 0,
@@ -423,7 +435,7 @@ def build_slack_message(all_stats):
         bt = band_totals[current_band]
         lines.append(sep_dot)
         lines.append(fmt_row(
-            "", f"  Subtotal {current_band}", "",
+            "", f"  SUBTOTAL {current_band}", "",
             bt["u"], bt["c"], bt["p"], bt["i"],
             bt["t"], bt["s"], bt["cr"]
         ))
