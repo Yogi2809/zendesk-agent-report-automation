@@ -5,6 +5,10 @@ on:
 
 jobs:
   send-report:
+    # Only run when triggered by workflow_dispatch (cron-job.org).
+    # Guard against GitHub's ghost schedule cache which can persist for days
+    # after the schedule: trigger is removed from the YAML.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
