@@ -371,7 +371,6 @@ def build_slack_message(all_stats):
     )
 
     total_width = len(header)
-    sep_heavy   = "═" * total_width
     sep_light   = "─" * total_width
     sep_dot     = "·" * total_width
 
@@ -380,9 +379,9 @@ def build_slack_message(all_stats):
         f"📅 *{REPORT_DATE}*   _|   Sent: {SENT_DATE}_",
         f"👥 *Total Agents: {len(all_stats)}*",
         "```",
-        sep_heavy,
+        sep_light,
         header,
-        sep_heavy,
+        sep_light,
     ]
 
     current_band = None
@@ -443,7 +442,7 @@ def build_slack_message(all_stats):
 
     lines.extend([
         "",
-        sep_heavy,
+        sep_light,
         fmt_row(
             "", "  GRAND TOTAL", "",
             sum(s["updates"]           for s in all_stats),
@@ -454,7 +453,7 @@ def build_slack_message(all_stats):
             sum(s["tickets_solved"]    for s in all_stats),
             sum(s["tickets_created"]   for s in all_stats),
         ),
-        sep_heavy,
+        sep_light,
         "```",
         "_Upd=Updates · Cmts=Comments · Pub=Public · Int=Internal · T.Upd=Tickets w/comment · Slvd=Solved · Crtd=Created_",
         "_⚠ = Agent inactive in Zendesk_",
