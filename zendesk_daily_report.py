@@ -402,9 +402,10 @@ def build_slack_message(all_stats):
                 lines.append("")
 
             current_band = s["band"]
-            band_label   = f"  ── Band: {current_band} "
+            band_label   = f"── Band: {current_band} "
             pad          = total_width - len(band_label)
             lines.append(f"{band_label}{'─' * pad}")
+            lines.append("")
             band_totals[current_band] = {
                 "u": 0, "c": 0, "p": 0, "i": 0,
                 "t": 0, "s": 0, "cr": 0,
@@ -442,7 +443,6 @@ def build_slack_message(all_stats):
 
     lines.extend([
         "",
-        sep_light,
         fmt_row(
             "", "  GRAND TOTAL", "",
             sum(s["updates"]           for s in all_stats),
