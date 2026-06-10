@@ -374,11 +374,18 @@ def build_slack_message(all_stats):
     sep_light   = "─" * total_width
     sep_dot     = "·" * total_width
 
-    lines = [
+    # Header lines — rendered as a mrkdwn section (outside the monospace block).
+    header_lines = [
         "📊 *cars24 — Daily Agent Report*",
         f"📅 *{REPORT_DATE}*   _|   Sent: {SENT_DATE}_",
         f"👥 *Total Agents: {len(all_stats)}*",
-        "```",
+    ]
+
+    # Table body — rendered in a rich_text_preformatted block (guaranteed
+    # monospace + whitespace preserved on every Slack client). Relying on
+    # ``` auto-detection in the `text` field is flaky and renders proportional
+    # on some clients, collapsing the column alignment.
+    lines = [
         sep_light,
         header,
         sep_light,
@@ -454,22 +461,44 @@ def build_slack_message(all_stats):
             sum(s["tickets_created"]   for s in all_stats),
         ),
         sep_light,
-        "```",
-        "_Upd=Updates · Cmts=Comments · Pub=Public · Int=Internal · T.Upd=Tickets w/comment · Slvd=Solved · Crtd=Created_",
-        "_⚠ = Agent inactive in Zendesk_",
     ])
 
-    return "\n".join(lines)
+    table_text  = "\n".join(lines)
+    footer_text = (
+        "_Upd=Updates · Cmts=Comments · Pub=Public · Int=Internal · "
+        "T.Upd=Tickets w/comment · Slvd=Solved · Crtd=Created_\n"
+        "_⚠ = Agent inactive in Zendesk_"
+    )
+
+    blocks = [
+        {"type": "section",
+         "text": {"type": "mrkdwn", "text": "\n".join(header_lines)}},
+        {"type": "rich_text",
+         "elements": [
+             {"type": "rich_text_preformatted",
+              "elements": [{"type": "text", "text": table_text}]},
+         ]},
+        {"type": "context",
+         "elements": [{"type": "mrkdwn", "text": footer_text}]},
+    ]
+
+    # Plain-text fallback — used for push/notification previews, accessibility,
+    # and the console preview. Wrapped in ``` so it stays readable there too.
+    fallback_text = (
+        "\n".join(header_lines) + "\n```\n" + table_text + "\n```\n" + footer_text
+    )
+
+    return blocks, fallback_text
 
 
-def send_to_slack(message):
+def send_to_slack(blocks, fallback_text):
     print("\n📤 Sending report to Slack...")
     client = WebClient(token=SLACK_BOT_TOKEN)
     try:
         client.chat_postMessage(
             channel=SLACK_CHANNEL_ID,
-            text=message,
-            mrkdwn=True,
+            text=fallback_text,   # fallback for notifications / accessibility
+            blocks=blocks,
         )
         print("✅ Report sent successfully!")
     except SlackApiError as e:
@@ -503,14 +532,14 @@ def main():
     audit_counts = fetch_audit_counts(ticket_ids, agent_ids)
     all_stats    = build_all_stats(agents, audit_counts)
 
-    message = build_slack_message(all_stats)
+    blocks, fallback_text = build_slack_message(all_stats)
     print("\n" + "=" * 80)
     print("📋 REPORT PREVIEW:")
     print("=" * 80)
-    print(message)
+    print(fallback_text)
     print("=" * 80 + "\n")
 
-    send_to_slack(message)
+    send_to_slack(blocks, fallback_text)
     print("\n🎉 Done!")
 
 
