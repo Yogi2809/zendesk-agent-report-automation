@@ -2,6 +2,11 @@ name: Zendesk Daily Agent Report
 
 on:
   workflow_dispatch:         # triggered daily by cron-job.org at 09:00 AM IST
+    inputs:
+      channel_id:
+        description: 'Override Slack channel ID (leave blank to use secret)'
+        required: false
+        default: ''
 
 jobs:
   send-report:
@@ -30,5 +35,5 @@ jobs:
           ZENDESK_EMAIL:     ${{ secrets.ZENDESK_EMAIL }}
           ZENDESK_API_TOKEN: ${{ secrets.ZENDESK_API_TOKEN }}
           SLACK_BOT_TOKEN:   ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL_ID:  ${{ secrets.SLACK_CHANNEL_ID }}
+          SLACK_CHANNEL_ID:  ${{ inputs.channel_id != '' && inputs.channel_id || secrets.SLACK_CHANNEL_ID }}
         run: python zendesk_daily_report.py
